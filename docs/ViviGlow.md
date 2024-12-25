@@ -1,14 +1,16 @@
-# ViviGlow - WoW Addon Documentation
+# ViviGlow Technical Documentation
 
 ## Overview
-ViviGlow is a WoW addon for Monks providing actionbar visual feedback of Vivacious Vivification to maximize use.
+ViviGlow is a specialized addon for World of Warcraft Monks that provides visual feedback for Vivacious Vivification procs.
 
-## Current Features
+## Implementation Details
 
-### Core Functionality
-- Monitors Vivacious Vivification buff state
-- Applies glow effect to Vivify buttons when proc is active
-- Automatically detects Mistweaver spec and talent selection
+### Core Systems
+- Located in `src/core.lua`
+- Uses `IsPlayerSpell` for reliable talent detection
+- Handles specialization changes with proper cleanup
+- Maintains button tracking across UI updates
+- Improved specialization and talent change handling
 
 ### Animation System
 - Custom Blizzard-style border glow
@@ -20,6 +22,10 @@ ViviGlow is a WoW addon for Monks providing actionbar visual feedback of Vivacio
 - Turquoise color theme
 - Stable mouseover behavior
 - Dynamic border sizing (15px Blizzard standard)
+- Located in `src/animations/blizzardGlow.lua`
+- Uses recommended frame strata ("MEDIUM") and level settings
+- Properly handles frame cleanup during spec changes
+- Maintains Blizzard's UI standards for frame management
 
 ## Specifications
 
@@ -46,7 +52,7 @@ Description: Your Renewing Mist has a chance to make your next Vivify free
 
 ### Directory Layout
 ```
-ViviGlow/
+ViviGlow/                     # Repository root
 ├── src/
 │   ├── animations/
 │   │   ├── blizzardGlow.lua  - Current primary animation system
@@ -59,11 +65,13 @@ ViviGlow/
 │   ├── ViviGlow.md        - Technical documentation
 │   ├── CHANGELOG.md       - Version history and changes
 │   ├── CONTRIBUTING.md    - Contribution guidelines (to be created)
-│   ├── LICENSE.md         - License information (to be created)
+│   ├── LICENSE.md         - License information
 │   └── API.md             - API documentation (to be created)
-├── .gitignore
+├── .gitignore             - Git ignore rules
+├── .gitconfig             - Git configuration
+├── .gitattributes         - Git attributes and line ending rules
 ├── README.md              - Quick start and basic info
-└── ViviGlow.toc
+└── ViviGlow.toc          - Addon metadata and load order
 ```
 
 ### Documentation Structure
@@ -280,3 +288,28 @@ Currently in initial development. Contribution guidelines coming soon.
 ## Version History
 
 See [docs/CHANGELOG.md](CHANGELOG.md) for version history and changes.
+
+## API Usage
+Updates the glow effect on Vivify buttons based on buff status.
+
+## Events
+- PLAYER_LOGIN: Initial addon load
+- PLAYER_SPECIALIZATION_CHANGED: Handle spec changes
+- PLAYER_TALENT_UPDATE: Track talent changes
+- UNIT_AURA: Monitor buff status
+- ACTIONBAR_SLOT_CHANGED: Track button updates
+
+## Constants
+Located in `src/constants.lua`:
+- VIVIGLOW.SPELLS.VIVACIOUS_VIVIFICATION
+- VIVIGLOW.SPELLS.VIVACIOUS_BUFF
+- VIVIGLOW.ANIMATION settings
+
+## Examples
+```lua
+-- Check talent status
+local hasTalent = ViviGlow:HasVivaciousTalent()
+
+-- Update glow effects
+ViviGlow:UpdateVivifyGlow()
+```

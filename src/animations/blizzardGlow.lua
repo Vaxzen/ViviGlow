@@ -4,52 +4,41 @@ local BlizzardGlow = {}
 
 -- Simple settings
 local GLOW_SETTINGS = {
-    frameStrata = "HIGH",
-    frameLevelDelta = 100,
+    frameStrata = "MEDIUM",
+    frameLevelDelta = 1,
     BORDER_SIZE = 15
 }
 
 function BlizzardGlow:UpdateVivifyGlow(button, shouldGlow)
-    if not button.viviGlow then
+    -- Clean up any existing glow on this button
+    if button.viviGlow then
+        button.viviGlow.animGroup:Stop()
+        button.viviGlow:Hide()
+        button.viviGlow = nil
+    end
+
+    if shouldGlow then
         -- Create the glow frame
         local glow = CreateFrame("Frame", nil, button)
         glow:SetFrameStrata(GLOW_SETTINGS.frameStrata)
         glow:SetFrameLevel(button:GetFrameLevel() + GLOW_SETTINGS.frameLevelDelta)
         glow:SetAllPoints(button)
         
-        -- Calculate sizes dynamically
+        -- Calculate sizes dynamically based on button dimensions
         local buttonWidth = button:GetWidth()
         local buttonHeight = button:GetHeight()
         local baseSize = math.max(buttonWidth, buttonHeight)
         local totalSize = baseSize + (GLOW_SETTINGS.BORDER_SIZE * 2)
         
-        -- Calculate center offset if button isn't square
-        local xOffset = (buttonWidth - buttonHeight) / 2
-        local yOffset = (buttonHeight - buttonWidth) / 2
-        
-        -- Create the glow texture
+        -- Create and setup the glow texture
         local overlay = glow:CreateTexture(nil, "OVERLAY")
         overlay:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
         overlay:SetBlendMode("ADD")
         overlay:SetSize(totalSize, totalSize)
+        overlay:SetPoint("CENTER")  -- Simplified positioning
         overlay:SetVertexColor(VIVIGLOW.ANIMATION.COLOR.r, 
                              VIVIGLOW.ANIMATION.COLOR.g, 
                              VIVIGLOW.ANIMATION.COLOR.b)
-        
-        -- Position with dynamic centering and offset
-        if buttonWidth > buttonHeight then
-            overlay:SetPoint("CENTER", glow, "CENTER", 
-                VIVIGLOW.ANIMATION.OFFSET.x, 
-                yOffset + VIVIGLOW.ANIMATION.OFFSET.y)
-        elseif buttonHeight > buttonWidth then
-            overlay:SetPoint("CENTER", glow, "CENTER", 
-                xOffset + VIVIGLOW.ANIMATION.OFFSET.x, 
-                VIVIGLOW.ANIMATION.OFFSET.y)
-        else
-            overlay:SetPoint("CENTER", glow, "CENTER",
-                VIVIGLOW.ANIMATION.OFFSET.x,
-                VIVIGLOW.ANIMATION.OFFSET.y)
-        end
         
         glow.overlay = overlay
         
@@ -87,16 +76,18 @@ function BlizzardGlow:UpdateVivifyGlow(button, shouldGlow)
         fadeIn:SetSmoothing("IN_OUT")
         fadeIn:SetOrder(2)
         
+        -- Setup cleanup on hide
+        glow:SetScript("OnHide", function()
+            if glow.animGroup then
+                glow.animGroup:Stop()
+            end
+        end)
+        
         glow.animGroup = ag
         button.viviGlow = glow
-    end
-    
-    if shouldGlow then
-        button.viviGlow:Show()
-        button.viviGlow.animGroup:Play()
-    else
-        button.viviGlow.animGroup:Stop()
-        button.viviGlow:Hide()
+        
+        glow:Show()
+        ag:Play()
     end
 end
 

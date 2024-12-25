@@ -16,3 +16,5 @@ src/animations/customGlow.lua
 
 # Core functionality
 src/core.lua
+
+## SavedVariables: ViviGlowDB

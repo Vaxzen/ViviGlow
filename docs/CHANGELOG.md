@@ -31,3 +31,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Border sizing issues
 - Mouseover stability
 - Animation consistency
+
+## [1.0.2] - 2024-01-09
+### Added
+- Debug state persistence between sessions
+- New `/vgd status` command for comprehensive addon state information
+- Improved debug command feedback messages
+
+### Changed
+- Standardized message formatting
+- Enhanced debug command structure
+- Updated documentation for debug features

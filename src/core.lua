@@ -16,6 +16,46 @@ local vivifyButtons = {}
 local isTracking = false
 local hasTalent = false
 
+-- Define messages first
+local MESSAGES = {
+    ADDON_LOAD = "|cFF40D19EViviGlow|r v%s loaded",
+    CLASS_WRONG = "|cFFFF0000ViviGlow:|r This addon is for Monks only",
+    TALENT_MISSING = "|cFFFFFF00ViviGlow:|r Vivacious Vivification not selected - Addon deactivated",
+    TALENT_ACTIVE = "|cFF40D19EViviGlow:|r Active - Vivacious Vivification detected",
+    BUTTON_MISSING = "|cFFFFFF00ViviGlow:|r Vivify not found on action bars - Add Vivify spell to enable glow effect",
+    DEBUG_ON = "|cFF40D19EViviGlow Debug:|r Enabled",
+    DEBUG_OFF = "|cFF40D19EViviGlow Debug:|r Disabled"
+}
+
+-- Then register slash commands
+SLASH_VIVIGLOWDEBUG1 = '/vgd'
+SLASH_VIVIGLOWDEBUG2 = '/viviglowdebug'
+SlashCmdList["VIVIGLOWDEBUG"] = function(msg)
+    local command = msg:lower()
+    if command == "on" then
+        VIVIGLOW.DEBUG = true
+        ViviGlowDB.debug = true
+        print(MESSAGES.DEBUG_ON)
+    elseif command == "off" then
+        VIVIGLOW.DEBUG = false
+        ViviGlowDB.debug = false
+        print(MESSAGES.DEBUG_OFF)
+    elseif command == "status" then
+        -- Show comprehensive status
+        print("|cFF40D19EViviGlow Status:|r")
+        print("- Debug Mode: " .. (VIVIGLOW.DEBUG and "|cFF00FF00Enabled|r" or "|cFFFF0000Disabled|r"))
+        print("- Talent Status: " .. (hasTalent and "|cFF00FF00Active|r" or "|cFFFF0000Not Selected|r"))
+        print("- Tracking Status: " .. (isTracking and "|cFF00FF00Active|r" or "|cFFFF0000Inactive|r"))
+        print("- Vivify Buttons Found: " .. #vivifyButtons)
+    else
+        -- Show usage help
+        print("|cFF40D19EViviGlow Debug Commands:|r")
+        print("- /vgd on - Enable debug mode")
+        print("- /vgd off - Disable debug mode")
+        print("- /vgd status - Show current status")
+    end
+end
+
 -- Add debug function
 function ViviGlow:Debug(message)
     if VIVIGLOW.DEBUG then
@@ -98,8 +138,21 @@ function ViviGlow:CacheVivifyButtons()
     end
 end
 
+-- Initialize saved variables
+local function InitializeSavedVars()
+    -- Create default settings if they don't exist
+    ViviGlowDB = ViviGlowDB or {
+        debug = false
+    }
+    
+    -- Initialize debug mode from saved settings
+    VIVIGLOW.DEBUG = ViviGlowDB.debug
+end
+
 function ViviGlow:Init()
     if hasInitialized then return end
+    
+    InitializeSavedVars()
     
     -- Startup message with specific color
     print("|cFF40D19EViviGlow|r v1.0.0 loaded")

@@ -313,3 +313,12 @@ local hasTalent = ViviGlow:HasVivaciousTalent()
 -- Update glow effects
 ViviGlow:UpdateVivifyGlow()
 ```
+
+### Debug Commands
+- `/vgd on` - Enable debug mode (persists between sessions)
+- `/vgd off` - Disable debug mode (persists between sessions)
+- `/vgd status` - Display comprehensive addon status:
+  - Debug Mode state
+  - Talent Status
+  - Tracking Status
+  - Active Vivify Button count

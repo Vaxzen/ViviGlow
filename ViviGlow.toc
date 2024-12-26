@@ -2,7 +2,7 @@
 ## Title: ViviGlow
 ## Notes: WoW addon for Monks providing actionbar visual feedback of Vivacious Vivification to maximize use
 ## Author: Vaxzen
-## Version: @project-version@
+## Version: 1.0.3
 ## X-Category: Combat
 ## X-Website: https://github.com/Vaxzen/ViviGlow
 
@@ -10,11 +10,10 @@
 src/constants.lua
 
 # Animation systems
+src/animations/buttonCounter.lua
 src/animations/blizzardGlow.lua
 src/animations/defaultGlow.lua
 src/animations/customGlow.lua
 
 # Core functionality
 src/core.lua
-
-## SavedVariables: ViviGlowDB

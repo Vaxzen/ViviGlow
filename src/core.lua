@@ -1,33 +1,40 @@
 local addonName, ViviGlow = ...
 
--- Create our main frame and register for events
+-- Create our main frame and register essential events
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("PLAYER_TALENT_UPDATE")
+frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 frame:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
 frame:RegisterEvent("UNIT_AURA")
-frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-frame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 
 -- Cache frequently used values
 local hasInitialized = false
 local vivifyButtons = {}
 local isTracking = false
 local hasTalent = false
+local lastTalentState = false  -- Track talent state changes
+local lastBuffState = false  -- Track buff state changes
 
--- Define messages first
+-- Define standardized messages
 local MESSAGES = {
     ADDON_LOAD = "|cFF40D19EViviGlow|r v%s loaded",
     CLASS_WRONG = "|cFFFF0000ViviGlow:|r This addon is for Monks only",
-    TALENT_MISSING = "|cFFFFFF00ViviGlow:|r Vivacious Vivification not selected - Addon deactivated",
+    TALENT_MISSING = "|cFFFFFF00ViviGlow:|r Vivacious Vivification not selected - ViviGlow deactivated",
     TALENT_ACTIVE = "|cFF40D19EViviGlow:|r Active - Vivacious Vivification detected",
     BUTTON_MISSING = "|cFFFFFF00ViviGlow:|r Vivify not found on action bars - Add Vivify spell to enable glow effect",
     DEBUG_ON = "|cFF40D19EViviGlow Debug:|r Enabled",
     DEBUG_OFF = "|cFF40D19EViviGlow Debug:|r Disabled"
 }
 
--- Then register slash commands
+-- Initialize saved variables
+local function InitializeSavedVars()
+    ViviGlowDB = ViviGlowDB or { debug = false }
+    VIVIGLOW.DEBUG = ViviGlowDB.debug
+end
+
+-- Debug command registration (keeping existing implementation)
 SLASH_VIVIGLOWDEBUG1 = '/vgd'
 SLASH_VIVIGLOWDEBUG2 = '/viviglowdebug'
 SlashCmdList["VIVIGLOWDEBUG"] = function(msg)
@@ -56,45 +63,77 @@ SlashCmdList["VIVIGLOWDEBUG"] = function(msg)
     end
 end
 
--- Add debug function
-function ViviGlow:Debug(message)
-    if VIVIGLOW.DEBUG then
-        print("|cFF40D19EViviGlow:|r", message)
+-- Helper function to check talent and update status
+function ViviGlow:CheckTalentStatus()
+    local newTalentState = IsPlayerSpell(VIVIGLOW.SPELLS.VIVACIOUS_VIVIFICATION)
+    
+    -- Only show messages if talent state has changed
+    if newTalentState ~= lastTalentState then
+        if newTalentState then
+            print(MESSAGES.TALENT_ACTIVE)
+            self:Debug("Talent activated")
+        else
+            print(MESSAGES.TALENT_MISSING)
+            self:Debug("Talent deactivated")
+        end
+        lastTalentState = newTalentState
     end
+    
+    return newTalentState
 end
 
--- Helper function to check if talent is selected
-function ViviGlow:HasVivaciousTalent()
-    self:Debug("=== Talent Check Start ===")
-    hasTalent = IsPlayerSpell(VIVIGLOW.SPELLS.VIVACIOUS_VIVIFICATION)
+-- Core initialization function following program flow
+function ViviGlow:Init()
+    if hasInitialized then return end
     
-    if hasTalent then
-        print("|cFF40D19EViviGlow - Active:|r Vivacious Vivification Detected")
-        isTracking = true
-    else
-        print("|cFFFFFF00ViviGlow - Disabled:|r Vivacious Vivification Not Selected")
+    InitializeSavedVars()
+    
+    self:Debug("=== Initialization Start ===")
+    
+    -- Step 1: Load confirmation
+    print(string.format(MESSAGES.ADDON_LOAD, "1.0.0"))
+    
+    -- Step 2: Class check
+    local _, className = UnitClass("player")
+    if className ~= VIVIGLOW.REQUIRED_CLASS then
+        print(MESSAGES.CLASS_WRONG)
+        self:Debug("Wrong class detected - disabling addon")
+        return
+    end
+    
+    -- Register remaining events only if class check passes
+    frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    
+    hasInitialized = true
+    self:Debug("Initialization complete - proceeding to talent check")
+    
+    -- Initial talent and button check
+    self:CheckTalentAndInitialize()
+end
+
+-- Consolidated talent and button initialization
+function ViviGlow:CheckTalentAndInitialize()
+    -- Step 3: Talent check
+    hasTalent = self:CheckTalentStatus()
+    
+    if not hasTalent then
         isTracking = false
-        self:UpdateVivifyGlow()
+        self:UpdateVivifyGlow() -- Clean up any existing glows
+        return
     end
     
-    self:Debug("Final talent status: " .. (hasTalent and "SELECTED" or "NOT SELECTED"))
-    self:Debug("=== Talent Check End ===")
-    return hasTalent
-end
-
--- Helper function to check for Vivacious Vivification buff
-function ViviGlow:HasVivaBuff()
-    local buffId = VIVIGLOW.SPELLS.VIVACIOUS_BUFF
-    local auras = C_UnitAuras.GetPlayerAuraBySpellID(buffId)
-    local hasBuff = auras ~= nil
+    -- Step 4: Button check
+    self:CacheVivifyButtons()
     
-    -- Only debug when buff status changes
-    if hasBuff ~= lastBuffStatus then
-        self:Debug("Vivacious buff: " .. (hasBuff and "GAINED" or "LOST"))
-        lastBuffStatus = hasBuff
+    if #vivifyButtons == 0 then
+        print(MESSAGES.BUTTON_MISSING)
+        self:Debug("No Vivify buttons found")
+        return
     end
     
-    return hasBuff
+    -- Step 5: Begin tracking
+    isTracking = true
+    self:UpdateVivifyGlow()
 end
 
 -- Track only Vivify casts when we have the talent
@@ -138,115 +177,126 @@ function ViviGlow:CacheVivifyButtons()
     end
 end
 
--- Initialize saved variables
-local function InitializeSavedVars()
-    -- Create default settings if they don't exist
-    ViviGlowDB = ViviGlowDB or {
-        debug = false
-    }
-    
-    -- Initialize debug mode from saved settings
-    VIVIGLOW.DEBUG = ViviGlowDB.debug
-end
-
-function ViviGlow:Init()
-    if hasInitialized then return end
-    
-    InitializeSavedVars()
-    
-    -- Startup message with specific color
-    print("|cFF40D19EViviGlow|r v1.0.0 loaded")
-    self:Debug("Initializing...")
-    
-    -- Check if player is correct class
-    local _, className = UnitClass("player")
-    self:Debug("Class check: " .. className)
-    
-    if className ~= VIVIGLOW.REQUIRED_CLASS then
-        print("|cFFFF0000ViviGlow:|r This addon is for Monks only!")
-        return
-    end
-    
-    -- Check talent status
-    self:Debug("Checking talents...")
-    local talentStatus = self:HasVivaciousTalent()
-    
-    -- Cache Vivify buttons
-    self:Debug("Scanning action bars...")
-    self:CacheVivifyButtons()
-    
-    hasInitialized = true
-    
-    -- Final status message
-    if talentStatus then
-        print("|cFF40D19EViviGlow:|r Ready - Vivacious Vivification detected")
-    else
-        print("|cFFFFFF00ViviGlow:|r Waiting - Vivacious Vivification not selected")
+-- Add debug function
+function ViviGlow:Debug(message)
+    if VIVIGLOW.DEBUG then
+        print("|cFF40D19EViviGlow:|r", message)
     end
 end
 
--- Add at top with other locals
-local glowStyle = {
-    BLIZZARD = "BLIZZARD",  -- Default gold proc glow
-    CUSTOM = "CUSTOM"       -- Our turquoise glow
-}
+-- Updated HasVivaBuff function with state tracking
+function ViviGlow:HasVivaBuff()
+    -- Use C_UnitAuras for modern API usage
+    local auraData = C_UnitAuras.GetPlayerAuraBySpellID(VIVIGLOW.SPELLS.VIVACIOUS_BUFF)
+    local currentBuffState = auraData ~= nil
+    
+    -- Only debug message on state change
+    if currentBuffState ~= lastBuffState then
+        if currentBuffState then
+            self:Debug("Vivacious buff gained - Starting glow and counter")
+        else
+            self:Debug("Vivacious buff lost - Stopping glow and counter")
+        end
+        lastBuffState = currentBuffState
+    end
+    
+    return currentBuffState
+end
 
 -- Function to update glow on all cached Vivify buttons
 function ViviGlow:UpdateVivifyGlow()
     if not hasTalent then
-        -- Clean up all glow effects when talent is not active
+        -- Clean up all glow effects and counters when talent is not active
         for _, button in ipairs(vivifyButtons) do
             if button.viviGlow then
                 button.viviGlow.animGroup:Stop()
                 button.viviGlow:Hide()
                 button.viviGlow = nil
             end
+            self.ButtonCounter:CleanUp(button)
         end
         return
     end
     
     local shouldGlow = self:HasVivaBuff()
     
+    -- Get precise buff timing for counter
+    local auraData = C_UnitAuras.GetPlayerAuraBySpellID(VIVIGLOW.SPELLS.VIVACIOUS_BUFF)
+    local remainingTime = auraData and math.floor(auraData.expirationTime - GetTime()) or 0
+    
     for _, button in ipairs(vivifyButtons) do
+        -- Update glow effect
         self.BlizzardGlow:UpdateVivifyGlow(button, shouldGlow)
+        
+        -- Update counter with precise buff timing
+        if shouldGlow and (not button.viviCounter or remainingTime >= 9) then
+            self.ButtonCounter:StartCounter(button, {
+                duration = remainingTime,
+                countDown = true,
+                continueCounting = true,  -- Enable continuous counting
+                spellID = VIVIGLOW.SPELLS.VIVACIOUS_BUFF  -- Pass spell ID for cooldown tracking
+            })
+        end
     end
 end
 
--- Event handler
+-- Event handler with improved flow
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
-        print("|cFF40D19EViviGlow|r v1.0.0 - Addon Loaded")
-    elseif event == "PLAYER_ENTERING_WORLD" then
         ViviGlow:Init()
     elseif hasInitialized then
-        if event == "PLAYER_SPECIALIZATION_CHANGED" then
-            local unit = ...
-            if unit == "player" then
-                hasTalent = ViviGlow:HasVivaciousTalent()
-                if hasTalent then
-                    ViviGlow:CacheVivifyButtons()
+        if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_TALENT_UPDATE" then
+            ViviGlow:CheckTalentAndInitialize()
+        elseif isTracking then
+            if event == "UNIT_AURA" then
+                local unit = ...
+                if unit == "player" then
                     ViviGlow:UpdateVivifyGlow()
                 end
-            end
-        elseif event == "PLAYER_TALENT_UPDATE" then
-            hasTalent = ViviGlow:HasVivaciousTalent()
-            if hasTalent then
+            elseif event == "ACTIONBAR_SLOT_CHANGED" then
                 ViviGlow:CacheVivifyButtons()
                 ViviGlow:UpdateVivifyGlow()
             end
-        elseif event == "UNIT_AURA" and hasTalent then
-            local unit = ...
-            if unit == "player" then
-                ViviGlow:UpdateVivifyGlow()
-            end
-        elseif event == "ACTIONBAR_SLOT_CHANGED" then
-            if isTracking then
-                ViviGlow:CacheVivifyButtons()
-                ViviGlow:UpdateVivifyGlow()
-            end
-        elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-            ViviGlow:UNIT_SPELLCAST_SUCCEEDED(...)
         end
     end
 end)
+
+local function HandleVivifyButton(button)
+    if not button then return end
+    
+    -- When buff is detected
+    local function OnAuraChanged(unit)
+        if unit ~= "player" then return end
+        
+        local name, _, _, _, _, _, _, _, _, spellID = 
+            AuraUtil.FindAuraByName(VIVIGLOW.SPELLS.VIVACIOUS_BUFF, "player")
+            
+        if name then
+            -- Start glow effect
+            ViviGlow.BlizzardGlow:StartGlow(button)
+            -- Start counter with default settings (10 seconds, countdown)
+            ViviGlow.ButtonCounter:StartCounter(button, {
+                duration = 10,  -- Matches buff duration
+                countDown = true,
+                verticalAlign = "CENTER",
+                horizontalAlign = "CENTER",
+                fontSizePercent = 0.6,
+                color = { r = 1, g = 1, b = 1, a = 1 }
+            })
+        else
+            -- Stop both glow and counter
+            ViviGlow.BlizzardGlow:StopGlow(button)
+            ViviGlow.ButtonCounter:StopCounter(button)
+        end
+    end
+    
+    -- Register for aura changes
+    local frame = CreateFrame("Frame")
+    frame:RegisterUnitEvent("UNIT_AURA", "player")
+    frame:SetScript("OnEvent", function(_, event, unit)
+        if event == "UNIT_AURA" then
+            OnAuraChanged(unit)
+        end
+    end)
+end
  

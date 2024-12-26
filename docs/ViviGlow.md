@@ -27,6 +27,13 @@ ViviGlow is a specialized addon for World of Warcraft Monks that provides visual
 - Properly handles frame cleanup during spec changes
 - Maintains Blizzard's UI standards for frame management
 
+### Counter System
+- Located in `src/animations/buttonCounter.lua`
+- Uses Blizzard font standards and scaling
+- Provides real-time buff duration tracking
+- Configurable parameters for flexibility
+- Clean visual presentation with optimized contrast
+
 ## Specifications
 
 ### Addon Details
@@ -241,6 +248,8 @@ SPELLS = {
 - [x] Add color customization
 - [x] Add position offset support
 - [x] Implement stable mouseover behavior
+- [x] Add buff duration counter
+- [x] Implement continuous cooldown tracking
 - [ ] Add in-game configuration panel
 - [ ] Save user preferences between sessions
 - [ ] Add color presets
@@ -252,6 +261,8 @@ SPELLS = {
 - [x] Fix border sizing issues
 - [x] Optimize animation performance
 - [x] Implement proper frame level handling
+- [x] Add buff duration tracking system
+- [x] Implement Blizzard font standards
 - [ ] Add performance monitoring
 - [ ] Add comprehensive error handling
 - [ ] Add debug logging system
@@ -263,6 +274,7 @@ SPELLS = {
 - [x] Create CHANGELOG
 - [x] Document animation settings
 - [x] Create technical documentation
+- [x] Document counter system
 - [ ] Add installation images
 - [ ] Create configuration guide
 - [ ] Document API for potential extensions
@@ -272,6 +284,8 @@ SPELLS = {
 - [x] Test basic functionality
 - [x] Test mouseover behavior
 - [x] Test animation system
+- [x] Test counter accuracy
+- [x] Test font visibility
 - [ ] Create test suite
 - [ ] Add compatibility testing for popular UI addons
 - [ ] Add performance benchmarks

@@ -1,18 +1,20 @@
 # ViviGlow
 
-A World of Warcraft addon for Monks that provides visual feedback for Vivacious Vivification procs on your Vivify button.
+A World of Warcraft addon for Mistweaver Monks that provides visual feedback for Vivacious Vivification procs to maximize usage.
 
 ## Features
-- Automatic detection of Vivacious Vivification talent
-- Dynamic glow effect on Vivify buttons when proc is active
-- Supports all action bar configurations
-- Proper handling of specialization and talent changes
-- Follows Blizzard UI best practices
+- Blizzard-style glow effect for Vivify when Vivacious Vivification procs
+- Real-time buff duration counter
+- Continuous cooldown tracking
+- Clean, visible counter display
+- Optimized performance and memory usage
+- Debug mode for troubleshooting
 
 ## Requirements
-- World of Warcraft: Dragonflight (10.0.7+)
-- Monk class
-- Vivacious Vivification talent selected
+- World of Warcraft Dragonflight
+- Monk Class
+- Mistweaver Specialization
+- Vivacious Vivification Talent
 
 ## Installation
 1. Download the latest release
@@ -20,16 +22,23 @@ A World of Warcraft addon for Monks that provides visual feedback for Vivacious 
 3. Restart World of Warcraft if it's running
 
 ## Usage
-The addon works automatically when:
-- You are playing a Monk
-- Have the Vivacious Vivification talent selected
-- Have Vivify on your action bars
+The addon works automatically when you:
+1. Have the Vivacious Vivification talent selected
+2. Are in Mistweaver specialization
+- A glow effect will appear around Vivify when the buff is active
+- A countdown timer shows remaining buff duration
+- Continuous tracking keeps you informed of buff status
 
-No configuration needed - the glow effect will appear automatically when the proc is active.
+## Commands
+- `/vgd on` - Enable debug mode
+- `/vgd off` - Disable debug mode
+- `/vgd status` - Show addon status
 
 ## Support
-- Report issues on [GitHub](https://github.com/Vaxzen/ViviGlow/issues)
-- For questions or suggestions, create a discussion on GitHub
+For issues and feature requests, please use the [GitHub issue tracker](https://github.com/yourusername/ViviGlow/issues).
 
 ## License
-Licensed under [GPL-3.0](LICENSE.md) 
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE.md](docs/LICENSE.md) file for details.
+
+## Acknowledgments
+- World of Warcraft and all related trademarks are the property of Blizzard Entertainment, Inc. 

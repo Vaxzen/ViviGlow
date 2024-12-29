@@ -10,8 +10,11 @@ VIVIGLOW = {
     REQUIRED_CLASS = "MONK",
     REQUIRED_SPEC = 2,  -- Mistweaver spec ID
     
-    -- Debug settings
-    DEBUG = true,
+    -- States (Default values that will be updated from saved variables)
+    ENABLED = true,         -- Addon enabled by default
+    GLOW_ENABLED = true,    -- Glow effect enabled by default
+    COUNTER_ENABLED = true, -- Counter enabled by default
+    DEBUG = false,          -- Debug disabled by default
     
     -- Animation settings
     ANIMATION = {

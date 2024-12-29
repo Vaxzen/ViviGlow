@@ -14,8 +14,11 @@ local hasInitialized = false
 local vivifyButtons = {}
 local isTracking = false
 local hasTalent = false
-local lastTalentState = false  -- Track talent state changes
-local lastBuffState = false  -- Track buff state changes
+local lastTalentState = false
+local lastBuffState = false
+local addonEnabled = VIVIGLOW.ENABLED
+local glowEnabled = VIVIGLOW.GLOW_ENABLED
+local counterEnabled = VIVIGLOW.COUNTER_ENABLED
 
 -- Define standardized messages
 local MESSAGES = {
@@ -25,12 +28,36 @@ local MESSAGES = {
     TALENT_ACTIVE = "|cFF40D19EViviGlow:|r Active - Vivacious Vivification detected",
     BUTTON_MISSING = "|cFFFFFF00ViviGlow:|r Vivify not found on action bars - Add Vivify spell to enable glow effect",
     DEBUG_ON = "|cFF40D19EViviGlow Debug:|r Enabled",
-    DEBUG_OFF = "|cFF40D19EViviGlow Debug:|r Disabled"
+    DEBUG_OFF = "|cFF40D19EViviGlow Debug:|r Disabled",
+    GLOW_ENABLED = "|cFF40D19EViviGlow:|r Glow effect enabled",
+    GLOW_DISABLED = "|cFF40D19EViviGlow:|r Glow effect disabled",
+    COUNTER_ENABLED = "|cFF40D19EViviGlow:|r Counter display enabled",
+    COUNTER_DISABLED = "|cFF40D19EViviGlow:|r Counter display disabled"
 }
+
+-- Add color constants using Blizzard's standard colors
+local COLORS = {
+    MONK = RAID_CLASS_COLORS["MONK"] or CreateColor(0.0, 1.0, 0.59),  -- Fallback monk color
+    ENABLED = CreateColor(0.0, 1.0, 0.0),  -- Green
+    DISABLED = CreateColor(1.0, 0.0, 0.0),  -- Red
+}
+
+-- Helper function to colorize text
+local function ColorText(text, color)
+    return color:WrapTextInColorCode(text)
+end
 
 -- Initialize saved variables
 local function InitializeSavedVars()
-    ViviGlowDB = ViviGlowDB or { debug = false }
+    -- Initialize saved variables if they don't exist
+    ViviGlowDB = ViviGlowDB or {
+        debug = false,  -- Default debug state
+        enabled = VIVIGLOW.ENABLED,
+        glowEnabled = VIVIGLOW.GLOW_ENABLED,
+        counterEnabled = VIVIGLOW.COUNTER_ENABLED
+    }
+    
+    -- Update constants from saved variables
     VIVIGLOW.DEBUG = ViviGlowDB.debug
 end
 
@@ -39,27 +66,35 @@ SLASH_VIVIGLOWDEBUG1 = '/vgd'
 SLASH_VIVIGLOWDEBUG2 = '/viviglowdebug'
 SlashCmdList["VIVIGLOWDEBUG"] = function(msg)
     local command = msg:lower()
-    if command == "on" then
-        VIVIGLOW.DEBUG = true
-        ViviGlowDB.debug = true
-        print(MESSAGES.DEBUG_ON)
-    elseif command == "off" then
-        VIVIGLOW.DEBUG = false
-        ViviGlowDB.debug = false
-        print(MESSAGES.DEBUG_OFF)
-    elseif command == "status" then
-        -- Show comprehensive status
-        print("|cFF40D19EViviGlow Status:|r")
-        print("- Debug Mode: " .. (VIVIGLOW.DEBUG and "|cFF00FF00Enabled|r" or "|cFFFF0000Disabled|r"))
-        print("- Talent Status: " .. (hasTalent and "|cFF00FF00Active|r" or "|cFFFF0000Not Selected|r"))
-        print("- Tracking Status: " .. (isTracking and "|cFF00FF00Active|r" or "|cFFFF0000Inactive|r"))
-        print("- Vivify Buttons Found: " .. #vivifyButtons)
-    else
-        -- Show usage help
-        print("|cFF40D19EViviGlow Debug Commands:|r")
-        print("- /vgd on - Enable debug mode")
-        print("- /vgd off - Disable debug mode")
-        print("- /vgd status - Show current status")
+    
+    if command == "" then
+        -- Show comprehensive status in the new format
+        print(string.format("%s Debug Mode: %s (on / off)",
+            ColorText("ViviGlow v" .. (VIVIGLOW.VERSION or "1.0.0"), COLORS.MONK),
+            ColorText(VIVIGLOW.DEBUG and "Enabled" or "Disabled", 
+                     VIVIGLOW.DEBUG and COLORS.ENABLED or COLORS.DISABLED)))
+        
+        print(string.format("%s %s",
+            ColorText("/vgd talent:", COLORS.MONK),
+            ColorText(hasTalent and "Active" or "Not Selected",
+                     hasTalent and COLORS.ENABLED or COLORS.DISABLED)))
+        
+        print(string.format("%s %s",
+            ColorText("/vgd tracking:", COLORS.MONK),
+            ColorText(isTracking and "Active" or "Inactive",
+                     isTracking and COLORS.ENABLED or COLORS.DISABLED)))
+        
+        print(string.format("%s %d",
+            ColorText("/vgd buttons:", COLORS.MONK),
+            #vivifyButtons))
+        
+        return
+    end
+    
+    if command == "on" or command == "off" then
+        VIVIGLOW.DEBUG = command == "on"
+        ViviGlowDB.debug = VIVIGLOW.DEBUG
+        print(VIVIGLOW.DEBUG and MESSAGES.DEBUG_ON or MESSAGES.DEBUG_OFF)
     end
 end
 
@@ -206,7 +241,7 @@ end
 -- Function to update glow on all cached Vivify buttons
 function ViviGlow:UpdateVivifyGlow()
     if not hasTalent then
-        -- Clean up all glow effects and counters when talent is not active
+        -- Clean up effects if talent not active
         for _, button in ipairs(vivifyButtons) do
             if button.viviGlow then
                 button.viviGlow.animGroup:Stop()
@@ -218,24 +253,37 @@ function ViviGlow:UpdateVivifyGlow()
         return
     end
     
-    local shouldGlow = self:HasVivaBuff()
-    
-    -- Get precise buff timing for counter
-    local auraData = C_UnitAuras.GetPlayerAuraBySpellID(VIVIGLOW.SPELLS.VIVACIOUS_BUFF)
-    local remainingTime = auraData and math.floor(auraData.expirationTime - GetTime()) or 0
+    -- Use AuraUtil for more reliable aura detection
+    local auraInfo = C_UnitAuras.GetPlayerAuraBySpellID(VIVIGLOW.SPELLS.VIVACIOUS_BUFF)
+    local shouldGlow = auraInfo ~= nil
     
     for _, button in ipairs(vivifyButtons) do
-        -- Update glow effect
+        -- Update glow effect (keeps original behavior)
         self.BlizzardGlow:UpdateVivifyGlow(button, shouldGlow)
         
-        -- Update counter with precise buff timing
-        if shouldGlow and (not button.viviCounter or remainingTime >= 9) then
-            self.ButtonCounter:StartCounter(button, {
-                duration = remainingTime,
-                countDown = true,
-                continueCounting = true,  -- Enable continuous counting
-                spellID = VIVIGLOW.SPELLS.VIVACIOUS_BUFF  -- Pass spell ID for cooldown tracking
-            })
+        -- Update counter when enabled
+        if counterEnabled then
+            if shouldGlow then
+                -- Sync with actual buff duration
+                local remainingTime = auraInfo.expirationTime - GetTime()
+                self.ButtonCounter:StartCounter(button, {
+                    duration = remainingTime,
+                    countDown = true,
+                    continueCounting = true,
+                    spellID = VIVIGLOW.SPELLS.VIVACIOUS_BUFF,
+                    timeStamp = auraInfo.expirationTime
+                })
+            elseif not button.viviCounter or button.viviCounter.value == 0 then
+                -- Start new 9-second countdown when inactive
+                self.ButtonCounter:StartCounter(button, {
+                    duration = 9,
+                    countDown = true,
+                    continueCounting = true,
+                    spellID = VIVIGLOW.SPELLS.VIVACIOUS_BUFF
+                })
+            end
+        elseif not counterEnabled and button.viviCounter then
+            self.ButtonCounter:CleanUp(button)
         end
     end
 end
@@ -298,5 +346,105 @@ local function HandleVivifyButton(button)
             OnAuraChanged(unit)
         end
     end)
+end
+
+-- Updated helper function for status display with modern API practices
+local function ShowStatus()
+    local version = VIVIGLOW.VERSION or "1.0.0"
+    
+    -- Check if addon is fully functional
+    local isActive = hasInitialized and hasTalent and addonEnabled
+    
+    -- Main status line showing actual functional state
+    print(string.format("%s Status: %s",
+        ColorText("ViviGlow v" .. version, COLORS.MONK),
+        ColorText(isActive and "Enabled" or "Disabled", 
+                 isActive and COLORS.ENABLED or COLORS.DISABLED)))
+    
+    -- Feature status lines with class-colored commands
+    print(string.format("%s %s (on / off)",
+        ColorText("/vg glow:", COLORS.MONK),
+        ColorText(glowEnabled and "Enabled" or "Disabled",
+                 glowEnabled and COLORS.ENABLED or COLORS.DISABLED)))
+    
+    print(string.format("%s %s (on / off)",
+        ColorText("/vg counter:", COLORS.MONK),
+        ColorText(counterEnabled and "Enabled" or "Disabled",
+                 counterEnabled and COLORS.ENABLED or COLORS.DISABLED)))
+end
+
+-- Helper function for help display
+local function ShowHelp()
+    print(MESSAGES.HELP_HEADER)
+    for _, helpLine in ipairs(MESSAGES.HELP) do
+        print(helpLine)
+    end
+end
+
+-- Main command implementation
+SLASH_VIVIGLOW1 = '/vg'
+SLASH_VIVIGLOW2 = '/viviglow'
+SlashCmdList["VIVIGLOW"] = function(msg)
+    local command, arg = strsplit(" ", msg:lower(), 2)
+    
+    if command == "" or command == "status" then
+        ShowStatus()
+        return
+    end
+    
+    if command == "glow" then
+        if not arg or (arg ~= "on" and arg ~= "off") then
+            print("Usage: /vg glow on|off")
+            return
+        end
+        
+        glowEnabled = arg == "on"
+        VIVIGLOW.GLOW_ENABLED = glowEnabled  -- Update constant
+        ViviGlowDB.glowEnabled = glowEnabled  -- Save to persistent storage
+        
+        if glowEnabled then
+            -- Enable glow tracking events
+            frame:RegisterEvent("UNIT_AURA")
+            print(MESSAGES.GLOW_ENABLED)
+        else
+            -- Disable glow tracking events and clean up existing glows
+            frame:UnregisterEvent("UNIT_AURA")
+            -- Clean up any existing glows
+            for _, button in ipairs(vivifyButtons) do
+                if button.viviGlow then
+                    button.viviGlow.animGroup:Stop()
+                    button.viviGlow:Hide()
+                end
+            end
+            print(MESSAGES.GLOW_DISABLED)
+        end
+        
+    elseif command == "counter" then
+        if not arg or (arg ~= "on" and arg ~= "off") then
+            print("Usage: /vg counter on|off")
+            return
+        end
+        
+        counterEnabled = arg == "on"
+        VIVIGLOW.COUNTER_ENABLED = counterEnabled  -- Update constant
+        ViviGlowDB.counterEnabled = counterEnabled  -- Save to persistent storage
+        
+        if counterEnabled then
+            frame:RegisterEvent("UNIT_AURA")
+            print(MESSAGES.COUNTER_ENABLED)
+            -- Force immediate update
+            ViviGlow:UpdateVivifyGlow()
+        else
+            -- Disable counter tracking events and clean up existing counters
+            frame:UnregisterEvent("UNIT_AURA")
+            -- Clean up any existing counters
+            for _, button in ipairs(vivifyButtons) do
+                if button.viviCounter then
+                    button.viviCounter:Hide()
+                end
+            end
+            print(MESSAGES.COUNTER_DISABLED)
+        end
+    end
 end
  

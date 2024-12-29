@@ -30,8 +30,8 @@ local defaults = {
 
 -- Create custom font object using Blizzard's recommended method
 local COUNTER_FONT_NAME = "ViviGlowCounterFont"
-local counterFont = _G[COUNTER_FONT_NAME] or CreateFont(COUNTER_FONT_NAME)
-counterFont:SetFontObject(GameFontNormalLarge)  -- Inherit from Blizzard base font
+local counterFont = CreateFont(COUNTER_FONT_NAME)
+counterFont:SetFontObject(GameFontNormalLarge) -- Inherit from Blizzard base font
 counterFont:SetJustifyH("CENTER")
 counterFont:SetJustifyV("MIDDLE")
 counterFont:SetTextColor(1, 1, 1, 1)  -- White text
@@ -115,50 +115,62 @@ local function FormatTime(timeValue)
     return string.format("%d", math.ceil(timeValue))  -- Round up to nearest integer
 end
 
--- Main function to start counter
+-- Main function to start counter with proper initialization checks
 function ButtonCounter:StartCounter(button, options)
     if not button then
         ViviGlow:Debug("ERROR: No button provided to StartCounter")
         return
     end
 
-    -- Default options
+    -- Ensure proper initialization
+    if not IsLoggedIn() or InCombatLockdown() then
+        C_Timer.After(0.1, function() 
+            self:StartCounter(button, options)
+        end)
+        return
+    end
+
+    -- Safe options handling
     options = options or {}
+    options.duration = tonumber(options.duration) or defaults.duration
     options.continueCounting = options.continueCounting or false
-    options.spellID = options.spellID  -- Optional spellID for cooldown tracking
-    
+    options.spellID = tonumber(options.spellID)
+
     local counterFrame = GetCounterFrame(button)
     if not counterFrame then
         ViviGlow:Debug("ERROR: Failed to get/create counter frame")
         return
     end
 
-    -- Initialize time tracking
+    -- Initialize time tracking with safety checks
     local startTime = GetTime()
     local endTime = startTime + options.duration
-    
-    -- Update function for the counter
+
+    -- Update function with improved error handling and current API
     local function UpdateCounter()
+        if not counterFrame or not counterFrame.text then return end
+        
         local currentTime = GetTime()
         local remaining = endTime - currentTime
-        
+
         if remaining <= 0 then
             counterFrame.text:SetText("0")
             
             if options.continueCounting and options.spellID then
-                -- Use proper API namespace for cooldown check
-                local start, duration = C_Container.GetItemCooldown(options.spellID)
-                if start > 0 and duration > 0 then
-                    -- Update endTime to match cooldown
+                -- Use current Dragonflight API for spell cooldown
+                local start, duration = C_Spell.GetSpellCooldown(options.spellID)
+                if start and duration and start > 0 and duration > 0 then
                     endTime = start + duration
+                else
+                    self:StopCounter(button)
+                    return
                 end
             else
                 -- Stop counting if not configured to continue
                 C_Timer.After(0.5, function()
-                    counterFrame.text:SetText("")
-                    if counterFrame.ticker then
-                        counterFrame.ticker:Cancel()
-                        counterFrame.ticker = nil
+                    if counterFrame and counterFrame.text then
+                        counterFrame.text:SetText("")
+                        self:StopCounter(button)
                     end
                 end)
                 return
@@ -168,33 +180,45 @@ function ButtonCounter:StartCounter(button, options)
             counterFrame.text:SetText(FormatTime(remaining))
         end
     end
-    
-    -- Stop any existing counter
-    if counterFrame.ticker then
-        counterFrame.ticker:Cancel()
-    end
-    
-    -- Start the counter ticker
-    counterFrame.ticker = C_Timer.NewTicker(0.1, UpdateCounter)
-    counterFrame:Show()
-    
-    -- Initial update
-    UpdateCounter()
-end
 
--- Stop counter function
-function ButtonCounter:StopCounter(button)
-    if button and button.viviCounter and button.viviCounter.ticker then
-        button.viviCounter.ticker:Cancel()
-        button.viviCounter.ticker = nil
-        button.viviCounter.text:SetText("")
-    end
-end
-
--- Clean up function
-function ButtonCounter:CleanUp(button)
+    -- Clean up existing timer before starting new one
     self:StopCounter(button)
-    if button and button.viviCounter then
+    
+    -- Start new timer with error handling
+    counterFrame.ticker = C_Timer.NewTicker(0.1, function()
+        if not button:IsVisible() then
+            self:StopCounter(button)
+            return
+        end
+        UpdateCounter()
+    end)
+    
+    counterFrame:Show()
+    UpdateCounter() -- Initial update
+end
+
+-- Stop counter function with improved cleanup
+function ButtonCounter:StopCounter(button)
+    if not button then return end
+    
+    if button.viviCounter then
+        if button.viviCounter.ticker then
+            button.viviCounter.ticker:Cancel()
+            button.viviCounter.ticker = nil
+        end
+        if button.viviCounter.text then
+            button.viviCounter.text:SetText("")
+        end
+    end
+end
+
+-- Clean up function with additional safety
+function ButtonCounter:CleanUp(button)
+    if not button then return end
+    
+    self:StopCounter(button)
+    if button.viviCounter then
         button.viviCounter:Hide()
+        button.viviCounter.text:SetText("")
     end
 end 

@@ -34,6 +34,15 @@ ViviGlow is a specialized addon for World of Warcraft Monks that provides visual
 - Configurable parameters for flexibility
 - Clean visual presentation with optimized contrast
 
+### Counter System Updates
+- Uses current Dragonflight API (`C_Spell.GetSpellCooldown`)
+- Improved initialization checks
+- Added combat lockdown protection
+- Enhanced error handling
+- Proper frame cleanup
+- Debug mode persistence
+- Better frame management
+
 ## Specifications
 
 ### Addon Details
@@ -263,6 +272,9 @@ SPELLS = {
 - [x] Implement proper frame level handling
 - [x] Add buff duration tracking system
 - [x] Implement Blizzard font standards
+- [x] Update to current Dragonflight API
+- [x] Add debug persistence
+- [x] Implement proper initialization checks
 - [ ] Add performance monitoring
 - [ ] Add comprehensive error handling
 - [ ] Add debug logging system
@@ -336,3 +348,10 @@ ViviGlow:UpdateVivifyGlow()
   - Talent Status
   - Tracking Status
   - Active Vivify Button count
+
+### API Updates
+Current API Version: 110007
+- Updated spell cooldown tracking
+- Improved frame management
+- Enhanced initialization sequence
+- Added proper combat protection

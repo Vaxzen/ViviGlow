@@ -41,4 +41,15 @@ For issues and feature requests, please use the [GitHub issue tracker](https://g
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE.md](docs/LICENSE.md) file for details.
 
 ## Acknowledgments
-- World of Warcraft and all related trademarks are the property of Blizzard Entertainment, Inc. 
+- World of Warcraft and all related trademarks are the property of Blizzard Entertainment, Inc.
+
+## Recent Changes
+### Version 1.0.1
+- Updated to latest Dragonflight API (110007)
+- Fixed button counter initialization issues
+- Improved error handling and frame management
+- Added debug mode persistence between sessions
+- Added combat lockdown protection
+- Implemented proper player login checks
+- Updated spell cooldown tracking to use current API
+- Enhanced frame cleanup and management 

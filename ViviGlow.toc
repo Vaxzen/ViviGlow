@@ -5,6 +5,7 @@
 ## Version: 1.0.3
 ## X-Category: Combat
 ## X-Website: https://github.com/Vaxzen/ViviGlow
+## IconTexture: 627485
 
 # Core files
 src/constants.lua

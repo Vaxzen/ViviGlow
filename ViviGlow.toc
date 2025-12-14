@@ -1,4 +1,4 @@
-## Interface: 110007
+## Interface: 110207
 ## Title: ViviGlow
 ## Notes: WoW addon for Monks providing actionbar visual feedback of Vivacious Vivification to maximize use
 ## Author: Vaxzen
